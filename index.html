@@ -1249,15 +1249,23 @@ function doExportExcel(){
 function exportAndMailThenHome(){
   const btn=document.getElementById('btn-export-mail');
   if(btn){btn.disabled=true;btn.innerHTML='<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:6px;vertical-align:middle"></span> Envoi en cours…';}
-  // Générer Excel base64
-  const xlsxB64=buildCsvData()?btoa(buildCsvData()):'';
   const magasinVal=getNomMagasin();
-  const stats={presents:chData?chData.filter(c=>c.s==='ok').length:0,manquants:chData?chData.filter(c=>c.s==='missing').length:0,total:chData?chData.length:0};
-  // Générer Excel via SheetJS si disponible
+  const nb_presents=cheques.filter(function(ch){return ch.status==='ok';}).length;
+  const nb_manquants=cheques.filter(function(ch){return ch.status==='missing';}).length;
+  const nb_extra=cheques.filter(function(ch){return ch.extra;}).length;
+  // Générer Excel via SheetJS
   let xlsxData='';
-  if(typeof XLSX!=='undefined'&&chData){
-    const rows=[['N° Remise','Montant','Client','Date enc.','Statut','Commentaire']];
-    chData.forEach(c=>{rows.push([c.remise||'',c.montant||'',c.client||'',c.date||'',c.s==='ok'?'Présent':c.s==='missing'?'Manquant':'Non listé',c.comment||'']);});
+  if(typeof XLSX!=='undefined'&&cheques&&cheques.length>0){
+    const rows=[['Date enc.','Client','Montant','Statut','Commentaire']];
+    cheques.forEach(function(ch){
+      rows.push([
+        ch.date||'',
+        ch.client||'',
+        ch.amt||'',
+        ch.status==='ok'?'Présent':ch.status==='missing'?'Manquant':'Non listé',
+        ch.comment||''
+      ]);
+    });
     const wb=XLSX.utils.book_new();
     const ws=XLSX.utils.aoa_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb,ws,'Chèques 30/09/2026');
@@ -1266,12 +1274,12 @@ function exportAndMailThenHome(){
   fetch('https://edgard-opticiens.app.n8n.cloud/webhook/30sept-cheques',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({magasin:magasinVal,date:new Date().toLocaleDateString('fr-FR'),nb_cheques:stats.total,nb_presents:stats.presents,nb_manquants:stats.manquants,xlsx_base64:xlsxData})
-  }).then(r=>r.json()).then(data=>{
+    body:JSON.stringify({magasin:magasinVal,date:new Date().toLocaleDateString('fr-FR'),nb_cheques:cheques.length,nb_presents:nb_presents,nb_manquants:nb_manquants,xlsx_base64:xlsxData})
+  }).then(function(r){return r.json();}).then(function(data){
     done.cheques=true;
     saveState();
-    setTimeout(()=>goHome(),1000);
-  }).catch(e=>{
+    setTimeout(function(){goHome();},1000);
+  }).catch(function(e){
     if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-send" style="font-size:16px"></i> Envoyer le pointage des chèques';}
     alert('Erreur réseau : '+e.message);
   });
