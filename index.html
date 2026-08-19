@@ -1314,6 +1314,16 @@ function exportAndMail(){
 function chPrev(){if(chPage>1){chPage--;renderChTable();}}
 function chNext(){const f=chFilter==='all'?cheques:cheques.filter(c=>c.status===chFilter);if(chPage*CH_PAGE<f.length){chPage++;renderChTable();}}
 function checkBtnExport(){
+  // Relire les commentaires depuis le DOM avant de vérifier
+  document.querySelectorAll('#ch-tbody input[type=text]').forEach(function(inp){
+    const onchange = inp.getAttribute('oninput') || '';
+    const m = onchange.match(/updateChComment\((\d+)/);
+    if(m){
+      const id = parseInt(m[1]);
+      const ch = cheques.find(function(x){ return x.id === id; });
+      if(ch) ch.comment = inp.value;
+    }
+  });
   const allPointed=cheques.filter(ch=>!ch.extra).every(ch=>ch.status==='ok'||ch.status==='missing');
   const commentsOk=cheques.filter(ch=>ch.status==='missing'||ch.extra).every(ch=>(ch.comment||'').trim().length>0);
   const btn=document.getElementById('btn-export-mail');
@@ -1375,7 +1385,9 @@ function updateChComment(id,val){
   if(c){
     c.comment=val;
     renderChStats(); // Relancer la vérification pour activer le bouton export si tout est OK
-  }
+    checkBtnExport();
+}
+  checkBtnExport();
 }
 function addChRow(){
   const name=document.getElementById('add-name').value.trim();
