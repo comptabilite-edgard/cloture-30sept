@@ -1344,7 +1344,8 @@ function exportAndMailThenHome(){
     XLSX.utils.book_append_sheet(wb,ws,'Chèques 30/09/2026');
     xlsxData=XLSX.write(wb,{type:'base64',bookType:'xlsx'});
   }
-  console.log('Envoi chèques, magasin:', magasinVal, 'nb:', cheques.length, 'xlsx:', xlsxData.length);
+  console.log('Envoi chèques, magasin:', magasinVal, 'nb:', cheques.length, 'xlsx taille:', xlsxData.length, 'chars');
+  alert('Debug: payload ' + JSON.stringify({magasin:magasinVal,nb:cheques.length,xlsxSize:xlsxData.length}).substring(0,200));
   fetch('https://edgard-opticiens.app.n8n.cloud/webhook/30sept-cheques',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
