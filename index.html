@@ -6,6 +6,7 @@
 <title>Clôture 30 septembre 2026 — Edgard Opticiens</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;background:#F5F4EF;color:#1a1a18;min-height:100vh}
@@ -861,7 +862,8 @@ function checkReady(){
   const opt=document.getElementById('tot-optimum').value.trim();
   const ready=!!(nom&&opt);
   document.getElementById('btn-caisse').disabled=!ready;
-  document.getElementById('btn-pdf').disabled=!ready;
+  const btnPdf=document.getElementById('btn-pdf');
+  if(btnPdf) btnPdf.disabled=!ready;
 }
 
 function showMemo(){
@@ -1345,7 +1347,6 @@ function exportAndMailThenHome(){
     xlsxData=XLSX.write(wb,{type:'base64',bookType:'xlsx'});
   }
   console.log('Envoi chèques, magasin:', magasinVal, 'nb:', cheques.length, 'xlsx taille:', xlsxData.length, 'chars');
-  alert('Debug: payload ' + JSON.stringify({magasin:magasinVal,nb:cheques.length,xlsxSize:xlsxData.length}).substring(0,200));
   fetch('https://edgard-opticiens.app.n8n.cloud/webhook/30sept-cheques',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
