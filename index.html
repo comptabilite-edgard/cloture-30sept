@@ -1341,7 +1341,7 @@ function exportAndMailThenHome(){
     });
     const wb=XLSX.utils.book_new();
     const ws=XLSX.utils.aoa_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb,ws,'Chèques 30/09/2026');
+    XLSX.utils.book_append_sheet(wb,ws,'Chèques 30-09-2026');
     xlsxData=XLSX.write(wb,{type:'base64',bookType:'xlsx'});
   }
   console.log('Envoi chèques, magasin:', magasinVal, 'nb:', cheques.length, 'xlsx taille:', xlsxData.length, 'chars');
