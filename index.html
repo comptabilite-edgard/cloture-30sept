@@ -569,12 +569,13 @@ canvas{display:block;cursor:crosshair;touch-action:none}
     <div style="position:relative;z-index:2">
       <div style="font-size:48px;margin-bottom:0.5rem">🎉</div>
       <div style="font-size:24px;font-weight:500;color:#1a1a18;margin-bottom:0.75rem">Félicitations !</div>
-      <div style="font-size:16px;font-weight:500;color:#B8982A;margin-bottom:0.5rem">Les 3 étapes du 30 septembre sont terminées.</div>
+      <div style="font-size:16px;font-weight:500;color:#B8982A;margin-bottom:0.5rem">Les 4 étapes du 30 septembre sont terminées.</div>
       <div style="font-size:14px;color:#5F5E5A;line-height:1.8;max-width:420px;margin:0 auto 1.5rem">
-        C'est terminé pour ce soir — vous pouvez fermer le magasin l'esprit tranquille.<br>
+        C'est terminé pour ce soir.<br>
         <strong style="color:#1a1a18">Rendez-vous demain matin pour la suite de la clôture.</strong>
       </div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem">
+        <div style="background:#EAF3DE;border-radius:20px;padding:6px 14px;font-size:12px;color:#3B6D11;font-weight:500">✓ BL Fournisseurs</div>
         <div style="background:#EAF3DE;border-radius:20px;padding:6px 14px;font-size:12px;color:#3B6D11;font-weight:500">✓ Inventaire de caisse</div>
         <div style="background:#EAF3DE;border-radius:20px;padding:6px 14px;font-size:12px;color:#3B6D11;font-weight:500">✓ Chèques différés</div>
         <div style="background:#EAF3DE;border-radius:20px;padding:6px 14px;font-size:12px;color:#3B6D11;font-weight:500">✓ Inventaire du stock</div>
@@ -737,7 +738,7 @@ function goHome(){
   renderHome();
   show('s-home');
   const total=Object.values(done).filter(Boolean).length;
-  if(total===3) setTimeout(()=>{show('s-finish');startFireworks();},600);
+  if(total===4) setTimeout(()=>{show('s-finish');startFireworks();},600);
 }
 function goHomeNoFinish(){
   renderHome();
@@ -1534,7 +1535,7 @@ function validateInv(){
 loadState();
 renderHome();
 // Si toutes les étapes déjà terminées au chargement, proposer l'écran final
-if(Object.values(done).filter(Boolean).length===3){
+if(Object.values(done).filter(Boolean).length===4){
   setTimeout(()=>{show('s-finish');startFireworks();},800);
 }
 document.getElementById('sig-date').textContent=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
