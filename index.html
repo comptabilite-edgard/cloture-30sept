@@ -938,22 +938,95 @@ function generatePDF(){
   w.document.close();
 }
 function buildPayloadPDF(){
-  // Construit le PDF base64 en réutilisant la logique de generatePDF
-  // mais avec jsPDF au lieu de window.print
-  const nom=document.getElementById('sig-nom').value.trim();
-  const date=document.getElementById('sig-date').textContent;
-  const compte=document.getElementById('tot-compte').textContent;
-  const optimum=document.getElementById('tot-optimum').value;
-  const ecart=document.getElementById('tot-ecart').textContent;
-  const ecartComment=document.getElementById('ecart-comment')?.value||'';
-  const sigData=document.getElementById('sig-canvas').toDataURL('image/png');
-  const magasinVal=getNomMagasin();
-  // Construire le HTML du rapport (même que generatePDF)
-  let billets='',pieces='';
-  BL.forEach(b=>{const n=document.getElementById(b.id).value||'0';if(parseInt(n)>0){const v=document.getElementById('v'+b.id.replace('b','')).textContent;billets+=`<tr><td>${b.lbl}</td><td style="text-align:center">${n}</td><td style="text-align:right">${v}</td></tr>`;}});
-  PC.forEach(p=>{const n=document.getElementById(p.id).value||'0';if(parseInt(n)>0){const v=document.getElementById('vp'+p.id.replace('p','')).textContent;pieces+=`<tr><td>${p.lbl}</td><td style="text-align:center">${n}</td><td style="text-align:right">${v}</td></tr>`;}});
-  const htmlContent=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Inventaire caisse</title></head><body style="font-family:Arial,sans-serif;font-size:12px;padding:20px;max-width:700px;margin:0 auto"><h1 style="font-size:18px;color:#B8982A">EDGARD OPTICIENS — ${magasinVal}</h1><h2 style="font-size:14px">Inventaire de caisse — 30 septembre 2026</h2><h3>Billets</h3><table border="1" cellpadding="5" style="width:100%;border-collapse:collapse"><tr><th>Coupure</th><th>Quantité</th><th>Montant</th></tr>${billets}</table><h3>Pièces</h3><table border="1" cellpadding="5" style="width:100%;border-collapse:collapse"><tr><th>Coupure</th><th>Quantité</th><th>Montant</th></tr>${pieces}</table><h3>Totaux</h3><p>Total compté : <strong>${compte}</strong></p><p>Solde Optimum : <strong>${optimum?optimum+' €':'—'}</strong></p><p>Écart : <strong>${ecart}</strong></p>${ecartComment?`<p>Commentaire : ${ecartComment}</p>`:''}<h3>Signature</h3><p>Directeur/Directrice : <strong>${nom}</strong></p><p>Date : ${date}</p><img src="${sigData}" style="height:80px"></body></html>`;
-  return btoa(unescape(encodeURIComponent(htmlContent)));
+  // Générer un vrai PDF via jsPDF
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  const W = doc.internal.pageSize.getWidth();
+  const margin = 14;
+  let y = margin;
+
+  const nom = document.getElementById('sig-nom')?.value?.trim() || '';
+  const date = document.getElementById('sig-date')?.textContent || '';
+  const compte = document.getElementById('tot-compte')?.textContent || '';
+  const optimum = document.getElementById('tot-optimum')?.value || '';
+  const ecart = document.getElementById('tot-ecart')?.textContent || '';
+  const ecartComment = document.getElementById('ecart-comment')?.value || '';
+  const sig = document.getElementById('sig-canvas')?.toDataURL('image/png') || '';
+  const magasinVal = getNomMagasin();
+
+  // En-tête
+  doc.setFontSize(9); doc.setTextColor(184,152,42);
+  doc.text('EDGARD OPTICIENS', margin, y);
+  doc.setTextColor(100);
+  doc.text('Inventaire de caisse — Clôture 30/09/2026', margin+38, y);
+  doc.text(magasinVal + ' | ' + date, W-margin, y, {align:'right'});
+  y+=5; doc.setDrawColor(229,227,218); doc.line(margin, y, W-margin, y); y+=8;
+
+  // Titre
+  doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(26,26,24);
+  doc.text('Inventaire de caisse', margin, y); y+=10;
+
+  // Billets et pièces
+  const DENOMS_BILLETS = [
+    {id:'b500',lbl:'500 €',v:500},{id:'b200',lbl:'200 €',v:200},{id:'b100',lbl:'100 €',v:100},
+    {id:'b50',lbl:'50 €',v:50},{id:'b20',lbl:'20 €',v:20},{id:'b10',lbl:'10 €',v:10},{id:'b5',lbl:'5 €',v:5}
+  ];
+  const DENOMS_PIECES = [
+    {id:'p200',lbl:'2 €',v:2},{id:'p100',lbl:'1 €',v:1},{id:'p50',lbl:'0,50 €',v:0.5},
+    {id:'p20',lbl:'0,20 €',v:0.2},{id:'p10',lbl:'0,10 €',v:0.1},{id:'p5',lbl:'0,05 €',v:0.05},
+    {id:'p2',lbl:'0,02 €',v:0.02},{id:'p1',lbl:'0,01 €',v:0.01}
+  ];
+
+  // Header tableau
+  doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(136,135,128);
+  doc.text('DÉNOMINATION', margin, y); doc.text('NB', margin+60, y); doc.text('SOUS-TOTAL', W-margin, y, {align:'right'});
+  y+=2; doc.setDrawColor(229,227,218); doc.line(margin, y, W-margin, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setTextColor(26,26,24);
+
+  var allDenoms = DENOMS_BILLETS.concat(DENOMS_PIECES);
+  allDenoms.forEach(function(d){
+    var el = document.getElementById(d.id);
+    var n = el ? (parseInt(el.value)||0) : 0;
+    if(n > 0){
+      var sub = (n * d.v).toFixed(2).replace('.', ',') + ' €';
+      doc.text('× ' + d.lbl, margin, y);
+      doc.text(String(n), margin+60, y);
+      doc.text(sub, W-margin, y, {align:'right'});
+      y += 5;
+    }
+  });
+
+  y+=3; doc.setDrawColor(229,227,218); doc.line(margin, y, W-margin, y); y+=6;
+
+  // Totaux
+  doc.setFontSize(10); doc.setFont('helvetica','bold');
+  doc.text('Total compté :', margin, y); doc.text(compte, W-margin, y, {align:'right'}); y+=6;
+  doc.text('Solde Optimum :', margin, y); doc.text(optimum + ' €', W-margin, y, {align:'right'}); y+=6;
+  var ecartVal = parseFloat((ecart||'').replace(',','.').replace(/[^\d.-]/g,'')) || 0;
+  doc.setTextColor(ecartVal===0?59:163, ecartVal===0?109:45, ecartVal===0?17:45);
+  doc.text('Écart :', margin, y); doc.text(ecart, W-margin, y, {align:'right'}); y+=8;
+  doc.setTextColor(26,26,24);
+  if(ecartComment){
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    var lines = doc.splitTextToSize('Commentaire : ' + ecartComment, W-2*margin);
+    doc.text(lines, margin, y); y += lines.length * 5 + 3;
+  }
+
+  // Signature
+  y+=5; doc.setDrawColor(229,227,218); doc.line(margin, y, W-margin, y); y+=7;
+  doc.setFontSize(9); doc.setFont('helvetica','bold');
+  doc.text('Signature du directeur / de la directrice : ' + nom, margin, y); y+=5;
+  if(sig){ try{ doc.addImage(sig, 'PNG', W-margin-65, y-3, 60, 22); }catch(e){} }
+  doc.setDrawColor(120); doc.line(W-margin-65, y+20, W-margin, y+20);
+  doc.setFontSize(7); doc.setTextColor(100);
+  doc.text(nom, W-margin-32.5, y+24, {align:'center'});
+
+  // Pied de page
+  doc.setFontSize(7); doc.setTextColor(136,135,128);
+  doc.text('Edgard Opticiens — Clôture annuelle 30 septembre 2026', margin, doc.internal.pageSize.getHeight()-5);
+  doc.text('Page 1 / 1', W-margin, doc.internal.pageSize.getHeight()-5, {align:'right'});
+
+  return doc.output('datauristring').split(',')[1];
 }
 
 function ecartNonJustifie(){
@@ -1271,15 +1344,23 @@ function exportAndMailThenHome(){
     XLSX.utils.book_append_sheet(wb,ws,'Chèques 30/09/2026');
     xlsxData=XLSX.write(wb,{type:'base64',bookType:'xlsx'});
   }
+  console.log('Envoi chèques, magasin:', magasinVal, 'nb:', cheques.length, 'xlsx:', xlsxData.length);
   fetch('https://edgard-opticiens.app.n8n.cloud/webhook/30sept-cheques',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({magasin:magasinVal,date:new Date().toLocaleDateString('fr-FR'),nb_cheques:cheques.length,nb_presents:nb_presents,nb_manquants:nb_manquants,xlsx_base64:xlsxData})
-  }).then(function(r){return r.json();}).then(function(data){
-    done.cheques=true;
-    saveState();
-    setTimeout(function(){goHome();},1000);
+  }).then(function(r){
+    // Accepter toute réponse 2xx
+    if(r.ok){
+      done.cheques=true;
+      saveState();
+      setTimeout(function(){goHome();},1000);
+    } else {
+      r.text().then(function(t){alert('Erreur n8n: '+r.status+' '+t.substring(0,200));});
+      if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-send" style="font-size:16px"></i> Envoyer le pointage des chèques';}
+    }
   }).catch(function(e){
+    console.error('Erreur fetch cheques:', e);
     if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-send" style="font-size:16px"></i> Envoyer le pointage des chèques';}
     alert('Erreur réseau : '+e.message);
   });
