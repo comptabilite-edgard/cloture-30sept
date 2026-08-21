@@ -1528,6 +1528,13 @@ function validateInv(){
   document.getElementById('conf-inv').style.display='flex';
   done.inventaire=true;
   saveState();
+  // Notifier n8n
+  const magasinVal=getNomMagasin();
+  fetch('https://edgard-opticiens.app.n8n.cloud/webhook/30sept-etape',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({magasin:magasinVal,etape:'stock',timestamp:new Date().toISOString()})
+  }).catch(function(){});
   setTimeout(()=>goHome(),1200);
 }
 
