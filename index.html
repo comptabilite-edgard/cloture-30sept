@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;background:#F5F4EF;color:#1a1a18;min-height:100vh}
@@ -575,10 +576,8 @@ canvas{display:block;cursor:crosshair;touch-action:none}
         <strong style="color:#1a1a18">Rendez-vous demain matin pour la suite de la clôture.</strong>
       </div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem">
-        <div style="background:#EAF3DE;border-radius:20px;padding:6px 14px;font-size:12px;color:#3B6D11;font-weight:500">✓ BL Fournisseurs</div>
-        <div style="background:#EAF3DE;border-radius:20px;padding:6px 14px;font-size:12px;color:#3B6D11;font-weight:500">✓ Inventaire de caisse</div>
-        <div style="background:#EAF3DE;border-radius:20px;padding:6px 14px;font-size:12px;color:#3B6D11;font-weight:500">✓ Chèques différés</div>
-        <div style="background:#EAF3DE;border-radius:20px;padding:6px 14px;font-size:12px;color:#3B6D11;font-weight:500">✓ Inventaire du stock</div>
+        <div style="background:#E8EEFB;border-radius:20px;padding:6px 14px;font-size:12px;color:#2C4A8C;font-weight:500">Attente TP</div>
+        <div style="background:#E8EEFB;border-radius:20px;padding:6px 14px;font-size:12px;color:#2C4A8C;font-weight:500">Dossiers commandés non facturés</div>
       </div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button class="btn-outline" style="margin:0" onclick="goHomeNoFinish()"><i class="ti ti-arrow-left" style="font-size:14px"></i> Revoir le récapitulatif</button>
@@ -941,93 +940,152 @@ function generatePDF(){
   w.document.close();
 }
 function buildPayloadPDF(){
-  // Générer un vrai PDF via jsPDF
   const {jsPDF} = window.jspdf;
-  const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
-  const W = doc.internal.pageSize.getWidth();
-  const margin = 14;
-  let y = margin;
-
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const magasin = getNomMagasin();
   const nom = document.getElementById('sig-nom')?.value?.trim() || '';
   const date = document.getElementById('sig-date')?.textContent || '';
   const compte = document.getElementById('tot-compte')?.textContent || '';
   const optimum = document.getElementById('tot-optimum')?.value || '';
   const ecart = document.getElementById('tot-ecart')?.textContent || '';
   const ecartComment = document.getElementById('ecart-comment')?.value || '';
-  const sig = document.getElementById('sig-canvas')?.toDataURL('image/png') || '';
-  const magasinVal = getNomMagasin();
+  const sigData = document.getElementById('sig-canvas')?.toDataURL('image/png') || '';
+  const hasEcart = ecart!=='—' && ecart!=='+0,00 €' && ecart!=='0,00 €';
 
-  // En-tête
-  doc.setFontSize(9); doc.setTextColor(184,152,42);
-  doc.text('EDGARD OPTICIENS', margin, y);
-  doc.setTextColor(100);
-  doc.text('Inventaire de caisse — Clôture 30/09/2026', margin+38, y);
-  doc.text(magasinVal + ' | ' + date, W-margin, y, {align:'right'});
-  y+=5; doc.setDrawColor(229,227,218); doc.line(margin, y, W-margin, y); y+=8;
+  const GOLD=[184,152,42], DARK=[26,26,24], GRAY=[95,94,90], LIGHT=[245,244,239], RED=[163,45,45], GREEN=[59,109,17], BORDER=[211,209,199];
 
-  // Titre
-  doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(26,26,24);
-  doc.text('Inventaire de caisse', margin, y); y+=10;
+  // Bandeau d'en-tête
+  doc.setFillColor(...GOLD);
+  doc.rect(0,0,pageWidth,32,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(18);
+  doc.text('EDGARD OPTICIENS', pageWidth/2, 14, {align:'center'});
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.text('Inventaire de caisse', pageWidth/2, 22, {align:'center'});
 
-  // Billets et pièces
-  const DENOMS_BILLETS = [
-    {id:'b500',lbl:'500 €',v:500},{id:'b200',lbl:'200 €',v:200},{id:'b100',lbl:'100 €',v:100},
-    {id:'b50',lbl:'50 €',v:50},{id:'b20',lbl:'20 €',v:20},{id:'b10',lbl:'10 €',v:10},{id:'b5',lbl:'5 €',v:5}
-  ];
-  const DENOMS_PIECES = [
-    {id:'p200',lbl:'2 €',v:2},{id:'p100',lbl:'1 €',v:1},{id:'p50',lbl:'0,50 €',v:0.5},
-    {id:'p20',lbl:'0,20 €',v:0.2},{id:'p10',lbl:'0,10 €',v:0.1},{id:'p5',lbl:'0,05 €',v:0.05},
-    {id:'p2',lbl:'0,02 €',v:0.02},{id:'p1',lbl:'0,01 €',v:0.01}
-  ];
+  let y=42;
+  doc.setTextColor(...DARK);
+  if(magasin){
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(13);
+    doc.text('Magasin : '+magasin, 14, y);
+  }
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...GRAY);
+  doc.text('Clôture du 30/09/2026 — '+date, pageWidth-14, y, {align:'right'});
+  y+=10;
 
-  // Header tableau
-  doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(136,135,128);
-  doc.text('DÉNOMINATION', margin, y); doc.text('NB', margin+60, y); doc.text('SOUS-TOTAL', W-margin, y, {align:'right'});
-  y+=2; doc.setDrawColor(229,227,218); doc.line(margin, y, W-margin, y); y+=5;
-  doc.setFont('helvetica','normal'); doc.setTextColor(26,26,24);
-
-  var allDenoms = DENOMS_BILLETS.concat(DENOMS_PIECES);
-  allDenoms.forEach(function(d){
-    var el = document.getElementById(d.id);
-    var n = el ? (parseInt(el.value)||0) : 0;
-    if(n > 0){
-      var sub = (n * d.v).toFixed(2).replace('.', ',') + ' €';
-      doc.text('× ' + d.lbl, margin, y);
-      doc.text(String(n), margin+60, y);
-      doc.text(sub, W-margin, y, {align:'right'});
-      y += 5;
-    }
-  });
-
-  y+=3; doc.setDrawColor(229,227,218); doc.line(margin, y, W-margin, y); y+=6;
-
-  // Totaux
-  doc.setFontSize(10); doc.setFont('helvetica','bold');
-  doc.text('Total compté :', margin, y); doc.text(compte, W-margin, y, {align:'right'}); y+=6;
-  doc.text('Solde Optimum :', margin, y); doc.text(optimum + ' €', W-margin, y, {align:'right'}); y+=6;
-  var ecartVal = parseFloat((ecart||'').replace(',','.').replace(/[^\d.-]/g,'')) || 0;
-  doc.setTextColor(ecartVal===0?59:163, ecartVal===0?109:45, ecartVal===0?17:45);
-  doc.text('Écart :', margin, y); doc.text(ecart, W-margin, y, {align:'right'}); y+=8;
-  doc.setTextColor(26,26,24);
-  if(ecartComment){
-    doc.setFontSize(9); doc.setFont('helvetica','normal');
-    var lines = doc.splitTextToSize('Commentaire : ' + ecartComment, W-2*margin);
-    doc.text(lines, margin, y); y += lines.length * 5 + 3;
+  function sectionLabel(text,yy){
+    doc.setFillColor(...LIGHT);
+    doc.rect(14, yy-5, pageWidth-28, 7, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...GOLD);
+    doc.text(text.toUpperCase(), 18, yy);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(...DARK);
   }
 
-  // Signature
-  y+=5; doc.setDrawColor(229,227,218); doc.line(margin, y, W-margin, y); y+=7;
-  doc.setFontSize(9); doc.setFont('helvetica','bold');
-  doc.text('Signature du directeur / de la directrice : ' + nom, margin, y); y+=5;
-  if(sig){ try{ doc.addImage(sig, 'PNG', W-margin-65, y-3, 60, 22); }catch(e){} }
-  doc.setDrawColor(120); doc.line(W-margin-65, y+20, W-margin, y+20);
-  doc.setFontSize(7); doc.setTextColor(100);
-  doc.text(nom, W-margin-32.5, y+24, {align:'center'});
+  sectionLabel('Billets', y); y+=6;
 
-  // Pied de page
-  doc.setFontSize(7); doc.setTextColor(136,135,128);
-  doc.text('Edgard Opticiens — Clôture annuelle 30 septembre 2026', margin, doc.internal.pageSize.getHeight()-5);
-  doc.text('Page 1 / 1', W-margin, doc.internal.pageSize.getHeight()-5, {align:'right'});
+  const BLnames=[['500 €','b500'],['200 €','b200'],['100 €','b100'],['50 €','b50'],['20 €','b20'],['10 €','b10'],['5 €','b5']];
+  const PCnames=[['2 €','p200'],['1 €','p100'],['0,50 €','p50'],['0,20 €','p20'],['0,10 €','p10'],['0,05 €','p5'],['0,02 €','p2'],['0,01 €','p1']];
+  const billetsRows=BLnames.map(([lbl,id])=>[lbl, document.getElementById(id)?.value||'0', document.getElementById('v'+id.replace('b',''))?.textContent||'0,00 €']);
+  const piecesRows=PCnames.map(([lbl,id])=>[lbl, document.getElementById(id)?.value||'0', document.getElementById('vp'+id.replace('p',''))?.textContent||'0,00 €']);
+
+  doc.autoTable({
+    startY:y,
+    head:[['Coupure','Quantité','Montant']],
+    body:billetsRows,
+    theme:'plain',
+    margin:{left:14,right:14},
+    headStyles:{fillColor:DARK,textColor:255,fontSize:9,fontStyle:'bold',cellPadding:2},
+    bodyStyles:{fontSize:9,textColor:DARK,cellPadding:2},
+    alternateRowStyles:{fillColor:LIGHT},
+    columnStyles:{1:{halign:'center'},2:{halign:'right'}}
+  });
+  y=doc.lastAutoTable.finalY+10;
+
+  sectionLabel('Pièces', y); y+=6;
+  doc.autoTable({
+    startY:y,
+    head:[['Coupure','Quantité','Montant']],
+    body:piecesRows,
+    theme:'plain',
+    margin:{left:14,right:14},
+    headStyles:{fillColor:DARK,textColor:255,fontSize:9,fontStyle:'bold',cellPadding:2},
+    bodyStyles:{fontSize:9,textColor:DARK,cellPadding:2},
+    alternateRowStyles:{fillColor:LIGHT},
+    columnStyles:{1:{halign:'center'},2:{halign:'right'}}
+  });
+  y=doc.lastAutoTable.finalY+10;
+
+  doc.setFontSize(9);
+  let wrappedComment=[];
+  if(hasEcart && ecartComment){
+    wrappedComment = doc.splitTextToSize('Commentaire écart : '+ecartComment, pageWidth-44);
+  }
+  const boxH = 26 + (wrappedComment.length? (6+wrappedComment.length*4) : 0);
+
+  doc.setDrawColor(...BORDER);
+  doc.setFillColor(...LIGHT);
+  doc.roundedRect(14, y, pageWidth-28, boxH, 2, 2, 'FD');
+
+  let ty=y+8;
+  doc.setFontSize(10);
+  doc.setTextColor(...GRAY);
+  doc.text('Total compté', 20, ty);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(...DARK);
+  doc.text(compte, pageWidth-20, ty, {align:'right'});
+  doc.setFont('helvetica','normal');
+  ty+=7;
+  doc.setTextColor(...GRAY);
+  doc.text('Solde Optimum', 20, ty);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(...DARK);
+  doc.text(optimum?optimum+' €':'—', pageWidth-20, ty, {align:'right'});
+  doc.setFont('helvetica','normal');
+  ty+=7;
+  doc.setTextColor(...GRAY);
+  doc.text('Écart', 20, ty);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(...(hasEcart?RED:GREEN));
+  doc.text(ecart, pageWidth-20, ty, {align:'right'});
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(...DARK);
+
+  if(wrappedComment.length){
+    ty+=8;
+    doc.setFontSize(9);
+    doc.setTextColor(...RED);
+    doc.text(wrappedComment, 20, ty);
+  }
+
+  y = y+boxH+12;
+
+  sectionLabel('Signature du directeur / directrice', y); y+=6;
+  doc.setDrawColor(...BORDER);
+  doc.setFillColor(255,255,255);
+  doc.roundedRect(14, y, pageWidth-28, 40, 2, 2, 'S');
+  doc.setFontSize(9);
+  doc.setTextColor(...GRAY);
+  doc.text('Nom', 20, y+11);
+  doc.text('Date', 20, y+19);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(...DARK);
+  doc.text(nom||'—', 40, y+11);
+  doc.setFont('helvetica','normal');
+  doc.text(date, 40, y+19);
+  try{ doc.addImage(sigData,'PNG', pageWidth-72, y+5, 56, 30); }catch(e){}
+
+  doc.setFontSize(8);
+  doc.setTextColor(...GRAY);
+  doc.text('Document généré automatiquement le '+new Date().toLocaleString('fr-FR'), 14, 290);
 
   return doc.output('datauristring').split(',')[1];
 }
