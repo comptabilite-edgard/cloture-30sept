@@ -482,7 +482,7 @@ canvas{display:block;cursor:crosshair;touch-action:none}
 <!-- INVENTAIRE -->
 <div id="s-inventaire" class="screen">
   <div class="header">
-    <button class="btn-back" onclick="goHome()" style="margin:0"><i class="ti ti-arrow-left"></i> Retour</button>
+    <button class="btn-back" id="inv-btn-retour" onclick="goHome()" style="margin:0"><i class="ti ti-arrow-left"></i> Retour</button>
     <span style="font-size:13px;font-weight:500;color:#1a1a18" id="inv-mag-name"></span>
     <span class="date-badge">30 sept — soir</span>
   </div>
@@ -543,11 +543,14 @@ canvas{display:block;cursor:crosshair;touch-action:none}
 
     </div>
   </div>
-  <div class="card">
+  <div class="card" id="inv-card-confirmation">
     <div class="card-title"><i class="ti ti-circle-check" style="font-size:15px"></i>Confirmation</div>
     <div style="font-size:13px;color:#888780;margin-bottom:12px">En cliquant ci-dessous, vous confirmez que l'inventaire a été clôturé dans Optimum avant 23h59.</div>
     <button class="btn-primary" onclick="validateInv()"><i class="ti ti-check" style="font-size:16px"></i> Inventaire clôturé dans Optimum</button>
     <div class="confirm-box" id="conf-inv"><i class="ti ti-circle-check" style="font-size:18px"></i><span>Étape validée — retour à l'accueil…</span></div>
+  </div>
+  <div class="card" id="inv-mode-lecture" style="display:none;background:#FAEEDA;border:1px solid #B8982A">
+    <div style="font-size:12.5px;color:#633806;display:flex;align-items:flex-start;gap:8px"><i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>Cette page est en <strong>consultation uniquement</strong>. La validation de cette étape sera disponible directement dans le guide de clôture, reçu par mail le 30 septembre.</div>
   </div>
 </div>
 
@@ -1587,8 +1590,10 @@ function validateInv(){
 // INIT
 loadState();
 renderHome();
-// Si toutes les étapes déjà terminées au chargement, proposer l'écran final
-if(Object.values(done).filter(Boolean).length===4){
+const paramsUrl=new URLSearchParams(window.location.search);
+const lienDirectInventaire=paramsUrl.get('ecran')==='inventaire';
+// Si toutes les étapes déjà terminées au chargement, proposer l'écran final (sauf lien direct vers la procédure)
+if(Object.values(done).filter(Boolean).length===4 && !lienDirectInventaire){
   setTimeout(()=>{show('s-finish');startFireworks();},800);
 }
 document.getElementById('sig-date').textContent=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
@@ -1600,6 +1605,17 @@ if(savedNom){
   const sel=document.getElementById('nom-magasin');
   sel.value=savedNom;
   propagateNom(savedNom);
+}
+// Lien direct vers la procédure inventaire (ex: ?ecran=inventaire), utilisé depuis le guide du 23/09
+if(lienDirectInventaire){
+  setTimeout(()=>show('s-inventaire'),100);
+  // Mode lecture seule : empêcher toute navigation vers les autres étapes et toute validation anticipée
+  const btnRetour=document.getElementById('inv-btn-retour');
+  if(btnRetour)btnRetour.style.display='none';
+  const cardConfirmation=document.getElementById('inv-card-confirmation');
+  if(cardConfirmation)cardConfirmation.style.display='none';
+  const modeLecture=document.getElementById('inv-mode-lecture');
+  if(modeLecture)modeLecture.style.display='block';
 }
 </script>
 </body>
