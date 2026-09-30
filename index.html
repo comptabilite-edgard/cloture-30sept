@@ -1465,7 +1465,7 @@ function checkBtnExport(){
       if(ch) ch.comment = inp.value;
     }
   });
-  const allPointed=cheques.filter(ch=>!ch.extra).every(ch=>ch.status==='ok'||ch.status==='missing');
+  const allPointed=cheques.every(ch=>ch.status==='ok'||ch.status==='missing'||ch.status==='extra');
   const commentsOk=cheques.filter(ch=>ch.status==='missing'||ch.extra).every(ch=>(ch.comment||'').trim().length>0);
   const btn=document.getElementById('btn-export-mail');
   if(btn)btn.disabled=!(allPointed&&commentsOk&&cheques.length>0);
